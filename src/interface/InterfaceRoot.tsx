@@ -1,7 +1,14 @@
+import { useEffect, useRef } from 'react'
 import { useStore } from '@state/index'
+import gsapfb from 'gsap'
 
 export default function InterfaceRoot() {
-  const { debug, toggleDebug } = useStore()
+  const { toggleDebug, setHoveredService, isAppReady } = useStore()
+  
+  // Refs for GSAP animation
+  const titleRef = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const bookRef = useRef<HTMLDivElement>(null)
 
   const services = [
     { id: 'lashes', label: 'Lash Extensions' },
@@ -10,15 +17,42 @@ export default function InterfaceRoot() {
     { id: 'facial', label: 'Hydration' },
   ]
 
+  // Intro Animation Sequence
+  useEffect(() => {
+    if (isAppReady) {
+      const tl = gsapfb.timeline()
+
+      // 1. Title fades in and moves down
+      tl.fromTo(titleRef.current, 
+        { opacity: 0, y: -50 },
+        { opacity: 1, y: 0, duration: 1.5, ease: 'power3.out' }
+      )
+
+      // 2. Menu items stagger in from left
+      .fromTo('.service-link', 
+        { opacity: 0, x: -20 },
+        { opacity: 1, x: 0, duration: 0.8, stagger: 0.1, ease: 'power2.out' },
+        '-=1' // Overlap with previous animation
+      )
+
+      // 3. Book button fades in
+      .fromTo(bookRef.current,
+        { opacity: 0, scale: 0.9 },
+        { opacity: 1, scale: 1, duration: 0.8, ease: 'back.out(1.7)' },
+        '-=0.5'
+      )
+    }
+  }, [isAppReady])
+
   return (
     <div className="interface-layer">
-      {/* Brand Header (Centered Top) - Editorial Style */}
-      <div style={{ 
+      {/* Brand Header */}
+      <div ref={titleRef} style={{ 
         position: 'absolute', 
         top: 60, 
         width: '100%', 
         textAlign: 'center',
-        pointerEvents: 'none' 
+        opacity: 0 // Start hidden for GSAP
       }}>
         <h1 style={{ 
           margin: 0, 
@@ -41,8 +75,8 @@ export default function InterfaceRoot() {
         </p>
       </div>
 
-      {/* Services Menu (Bottom Left) */}
-      <div style={{ 
+      {/* Services Menu */}
+      <div ref={menuRef} style={{ 
         position: 'absolute', 
         bottom: 60, 
         left: 60, 
@@ -53,6 +87,9 @@ export default function InterfaceRoot() {
             <li key={s.id} style={{ marginBottom: '1rem' }}>
               <button 
                 className="service-link"
+                // Connect to Store
+                onMouseEnter={() => setHoveredService(s.id)}
+                onMouseLeave={() => setHoveredService(null)}
                 style={{ 
                   background: 'none', 
                   border: 'none', 
@@ -64,13 +101,15 @@ export default function InterfaceRoot() {
                   textAlign: 'left',
                   padding: 0,
                   transition: 'all 0.4s ease',
-                  letterSpacing: '0.05em'
+                  letterSpacing: '0.05em',
+                  opacity: 0 // Start hidden for GSAP
                 }}
-                onMouseEnter={(e) => {
+                // Inline hover styles (can also be done in CSS)
+                onMouseOver={(e) => {
                   e.currentTarget.style.color = '#000';
                   e.currentTarget.style.paddingLeft = '10px';
                 }}
-                onMouseLeave={(e) => {
+                onMouseOut={(e) => {
                   e.currentTarget.style.color = '#555';
                   e.currentTarget.style.paddingLeft = '0px';
                 }}
@@ -82,13 +121,14 @@ export default function InterfaceRoot() {
         </ul>
       </div>
 
-      {/* Book Appointment (Bottom Right) */}
-      <div style={{ 
+      {/* Book Appointment */}
+      <div ref={bookRef} style={{ 
         position: 'absolute', 
         bottom: 60, 
         right: 60, 
         textAlign: 'right',
-        pointerEvents: 'auto'
+        pointerEvents: 'auto',
+        opacity: 0
       }}>
         <button style={{
           background: '#2C2C2C',
@@ -99,16 +139,22 @@ export default function InterfaceRoot() {
           textTransform: 'uppercase',
           letterSpacing: '0.1em',
           cursor: 'pointer',
-          transition: 'opacity 0.3s'
+          transition: 'all 0.3s ease'
         }}
-        onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
-        onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = 'scale(1.05)';
+          e.currentTarget.style.backgroundColor = '#000';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = 'scale(1)';
+          e.currentTarget.style.backgroundColor = '#2C2C2C';
+        }}
         >
           Book Appointment
         </button>
       </div>
 
-      {/* Invisible Debug Trigger (Top Right) */}
+      {/* Invisible Debug Trigger */}
       <div 
         style={{ position: 'absolute', top: 0, right: 0, width: 50, height: 50, zIndex: 9000, pointerEvents: 'auto' }}
         onClick={toggleDebug}
