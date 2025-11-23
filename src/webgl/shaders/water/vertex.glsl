@@ -4,12 +4,14 @@ varying vec3 vWorldNormal;
 
 uniform float uTime;
 
-// Smoother, rolling swells (Longer wavelength, lower amplitude)
+// Smoother, rolling swells
 float getElevation(vec2 uv) {
-    // Wave 1: Large diagonal swell
-    float elevation = sin(uv.x * 0.5 + uTime * 0.3) * sin(uv.y * 0.3 + uTime * 0.2) * 0.5;
-    // Wave 2: Secondary gentle ripple
-    elevation += sin(uv.x * 1.0 - uTime * 0.2) * 0.1;
+    // Wave 1: Very large, slow swell
+    float elevation = sin(uv.x * 0.3 + uTime * 0.1) * sin(uv.y * 0.2 + uTime * 0.1) * 0.4;
+    
+    // Wave 2: Subtle secondary variation
+    elevation += sin(uv.x * 0.8 - uTime * 0.05) * 0.1;
+    
     return elevation;
 }
 
@@ -17,15 +19,14 @@ void main() {
     vUv = uv;
 
     vec4 modelPosition = modelMatrix * vec4(position, 1.0);
-    
-    // Apply the smoother elevation
+
+    // Apply elevation
     float elevation = getElevation(modelPosition.xz);
     modelPosition.y += elevation;
 
     vWorldPosition = modelPosition.xyz;
-
-    // We keep the base normal pointing up. 
-    // The Fragment shader handles the detailed surface lighting.
+    
+    // Recalculate normal approximation for the large swells
     vWorldNormal = normalize(mat3(modelMatrix) * normal);
 
     gl_Position = projectionMatrix * viewMatrix * modelPosition;

@@ -40,6 +40,7 @@ float snoise(vec2 v) {
   return 130.0 * dot(m, g);
 }
 
+// Equirectangular mapping for HDRI
 vec2 equirectangularMapping(vec3 dir) {
     vec2 uv = vec2(atan(dir.z, dir.x), asin(dir.y));
     uv *= vec2(0.1591, 0.3183);
@@ -49,45 +50,47 @@ vec2 equirectangularMapping(vec3 dir) {
 
 void main() {
     vec3 viewDir = normalize(cameraPosition - vWorldPosition);
-
     float t = uTime * uSpeed;
-    
-    // REDUCED FREQUENCY: Makes the ripples larger and smoother
-    float noise1 = snoise(vUv * 4.0 + t * 0.4); 
-    float noise2 = snoise(vUv * 12.0 - t * 0.6); 
+
+    // --- SMOOTHER NOISE ---
+    float noise1 = snoise(vUv * 1.5 + t * 0.5);
+    float noise2 = snoise(vUv * 4.0 - t * 0.2);
     
     // Perturb normal
-    vec3 normalOffset = vec3(noise1 + noise2, 1.0, noise1 - noise2) * uDistortion * 0.15; 
+    vec3 normalOffset = vec3(noise1 + noise2, 1.0, noise1 - noise2) * uDistortion * 0.1;
     vec3 normal = normalize(vWorldNormal + normalOffset);
 
-    // Reflection
+    // --- HDRI REFLECTION ---
     vec3 reflectDir = reflect(-viewDir, normal);
     vec2 envUv = equirectangularMapping(normalize(reflectDir));
     
+    // Sample HDRI
     vec3 reflectionColor = texture2D(envMap, envUv).rgb;
-    reflectionColor *= 1.2; 
+    
+    // Boost reflection exposure slightly for drama
+    reflectionColor *= 1.5; 
 
-    // Fresnel
-    float fresnel = pow(1.0 - dot(viewDir, normal), 3.0);
+    // --- FRESNEL ---
+    float fresnel = pow(1.0 - dot(viewDir, normal), 4.0);
     fresnel = clamp(fresnel, 0.0, 1.0);
 
-    // Specular (Sun)
+    // --- SPECULAR (Sun) ---
     vec3 sunDir = normalize(uSunPosition - vWorldPosition);
     vec3 halfVector = normalize(sunDir + viewDir);
     float NdotH = max(0.0, dot(normal, halfVector));
-    
-    // SOFTENED HIGHLIGHT
-    float specular = pow(NdotH, 50.0); 
-    
-    // Mix Base + Reflection
-    vec3 mixColor = mix(uColor, reflectionColor, fresnel * 0.8 + 0.2);
-    
-    // Add specular (Cleaned calculation)
-    vec3 finalColor = mixColor + (vec3(0.9) * specular);
+    float specular = pow(NdotH, 100.0);
 
-    gl_FragColor = vec4(finalColor, 1.0);
+    // --- MIXING ---
+    vec3 liquidColor = uColor;
+
+    // Mix Refraction and Reflection
+    vec3 finalColor = mix(liquidColor, reflectionColor, fresnel * 0.7 + 0.3);
     
-    // Tone mapping
-    gl_FragColor.rgb = gl_FragColor.rgb / (gl_FragColor.rgb + vec3(1.0));
-    gl_FragColor.rgb = pow(gl_FragColor.rgb, vec3(1.0 / 2.2));
+    // Add specular highlight on top
+    finalColor += vec3(1.0) * specular * 0.8;
+
+    gl_FragColor = vec4(finalColor, 0.9);
+
+    #include <tonemapping_fragment>
+    #include <colorspace_fragment>
 }
