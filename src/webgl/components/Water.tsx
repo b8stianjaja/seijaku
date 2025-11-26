@@ -1,73 +1,40 @@
-import { useRef, useMemo } from 'react'
+import { useRef } from 'react'
+import { MeshTransmissionMaterial } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import vertexShader from '../shaders/water/vertex.glsl'
-import fragmentShader from '../shaders/water/fragment.glsl'
-import { useStore } from '@state/index'
-import { useControls } from 'leva'
 
 export default function Water() {
-  const materialRef = useRef<THREE.ShaderMaterial>(null)
-  const debug = useStore((state) => state.debug)
+  const materialRef = useRef<THREE.ShaderMaterial>(null) // Type hack for ref access
 
-  const config = useControls('Deep River', {
-    // Palette: Deep Emerald / River Teal
-    colorDeep: { value: '#001e2b' },     // Darkest Abyss
-    colorSurface: { value: '#006994' },  // Clear River Blue/Green
-    
-    // Motion
-    speed: { value: 0.5, min: 0, max: 2 }, // Faster for river flow
-    elevation: { value: 0.25, min: 0, max: 1 },
-    noiseFrequency: { value: 0.4, min: 0, max: 5 },
-    
-    // Crystal Properties
-    shininess: { value: 150.0, min: 50, max: 500 },
-    reflectivity: { value: 0.6, min: 0, max: 1 },
-    
-    sunPos: { value: [0, 15, -2] } 
-  }, { render: () => debug })
-
-  const uniforms = useMemo(
-    () => ({
-      uTime: { value: 0 },
-      uColorDeep: { value: new THREE.Color(config.colorDeep) },
-      uColorSurface: { value: new THREE.Color(config.colorSurface) },
-      uElevation: { value: config.elevation },
-      uNoiseFrequency: { value: config.noiseFrequency },
-      uSpeed: { value: config.speed },
-      uSunPosition: { value: new THREE.Vector3(...config.sunPos) },
-      uShininess: { value: config.shininess },
-      uReflectivity: { value: config.reflectivity },
-    }),
-    []
-  )
-
-  useFrame((_state, delta) => {
+  useFrame((state) => {
     if (materialRef.current) {
-      materialRef.current.uniforms.uTime.value += delta
-      
-      materialRef.current.uniforms.uColorDeep.value.set(config.colorDeep)
-      materialRef.current.uniforms.uColorSurface.value.set(config.colorSurface)
-      materialRef.current.uniforms.uElevation.value = config.elevation
-      materialRef.current.uniforms.uNoiseFrequency.value = config.noiseFrequency
-      materialRef.current.uniforms.uSpeed.value = config.speed
-      materialRef.current.uniforms.uSunPosition.value.set(...config.sunPos)
-      materialRef.current.uniforms.uShininess.value = config.shininess
-      materialRef.current.uniforms.uReflectivity.value = config.reflectivity
+      // Slowly animate the distortion time offset
+      materialRef.current.time = state.clock.elapsedTime * 0.2
     }
   })
 
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
-      {/* Large plane to cover the view */}
-      <planeGeometry args={[60, 60, 512, 512]} />
-      <shaderMaterial
+      {/* High res geometry for smooth physical waves */}
+      <planeGeometry args={[60, 60, 256, 256]} />
+      
+      {/* The Gold Standard for Clear Water */}
+      <MeshTransmissionMaterial
         ref={materialRef}
-        vertexShader={vertexShader}
-        fragmentShader={fragmentShader}
-        uniforms={uniforms}
-        side={THREE.BackSide}
-        transparent={true}
+        backside={false} // Render front face
+        samples={4} // Quality of refraction
+        resolution={512} // Resolution of the refraction buffer
+        transmission={1} // 100% Optical Clarity
+        roughness={0.05} // Almost mirror polish
+        thickness={3.0} // Volume simulation
+        ior={1.33} // Index of Refraction for Water
+        chromaticAberration={0.06} // "Prism" effect
+        anisotropy={0.5} // Shaping the highlights
+        distortion={0.4} // Wave height
+        distortionScale={0.4} // Wave frequency
+        temporalDistortion={0.1} // Wave speed
+        color="#cceeff" // Pale Ice Blue tint
+        background={new THREE.Color('#001e2b')} // Deep water backdrop color
       />
     </mesh>
   )
