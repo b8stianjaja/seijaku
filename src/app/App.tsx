@@ -1,6 +1,7 @@
 import { Leva } from 'leva'
 import { useStore } from '@state/index'
-import SceneRoot from '@webgl/SceneRoot'
+// Fix: Use named import to match 'export const SceneRoot'
+import { SceneRoot } from '@webgl/SceneRoot'
 import InterfaceRoot from '@interface/InterfaceRoot'
 import Loader from '@interface/Loader'
 import '@styles/main.scss'
@@ -10,17 +11,18 @@ export default function App() {
 
   return (
     <>
-      {/* 1. The 3D Layer */}
+      {/* 1. The 3D Layer - Renders the Canvas */}
       <SceneRoot />
 
-      {/* 2. The DOM Layer */}
+      {/* 2. The DOM Layer - UI Overlays (Pointer events handled in CSS) */}
       <InterfaceRoot />
       
-      {/* 3. The Loading Layer */}
+      {/* 3. The Loading Layer - Global loader state */}
       <Loader />
 
-      {/* 4. The Debug Layer */}
-      <Leva hidden={!debug} />
+      {/* 4. The Debug Layer - Controlled by Zustand state */}
+      {/* We hide Leva when debug is false, keeping the DOM clean */}
+      <Leva hidden={!debug} collapsed={false} />
     </>
   )
 }
