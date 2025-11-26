@@ -7,7 +7,7 @@ import path from 'path'
 export default defineConfig({
   plugins: [
     react(),
-    glsl() // <--- This line is crucial
+    glsl() 
   ],
   resolve: {
     alias: {

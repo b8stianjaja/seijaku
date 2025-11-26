@@ -6,7 +6,12 @@ declare module '*.glsl' {
   export default value
 }
 
-declare module '*.scss' {
-  const content: Record<string, string>
-  export default content
+declare module '*.vert' {
+  const value: string
+  export default value
+}
+
+declare module '*.frag' {
+  const value: string
+  export default value
 }
