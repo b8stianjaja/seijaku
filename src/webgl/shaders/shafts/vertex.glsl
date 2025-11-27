@@ -5,12 +5,11 @@ varying vec3 vViewPosition;
 void main() {
     vUv = uv;
     
-    // Standard transforms
     vec4 worldPos = modelMatrix * vec4(position, 1.0);
     vWorldPosition = worldPos.xyz;
     
-    vec4 viewPos = viewMatrix * worldPos;
-    vViewPosition = -viewPos.xyz; // Direction from camera to pixel
+    // We still pass view position if needed, but the main logic is now World-based
+    vViewPosition = worldPos.xyz - cameraPosition;
     
-    gl_Position = projectionMatrix * viewPos;
+    gl_Position = projectionMatrix * viewMatrix * worldPos;
 }
