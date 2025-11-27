@@ -13,7 +13,8 @@ export default function SunShafts() {
     uSunPosition: { value: new THREE.Vector3(0, 0, -10) } // Match Floor!
   }), [])
 
-  useFrame((state, delta) => {
+  // Fix: Rename unused 'state' to '_'
+  useFrame((_, delta) => {
     if (meshRef.current) {
       (meshRef.current.material as THREE.ShaderMaterial).uniforms.uTime.value += delta
     }

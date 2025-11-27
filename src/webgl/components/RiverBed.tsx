@@ -62,7 +62,8 @@ export default function RiverBed() {
     uSunPosition: { value: new THREE.Vector3(0, 0, -10) }
   }), [])
 
-  useFrame((state, delta) => {
+  // Fix: Rename unused 'state' to '_'
+  useFrame((_, delta) => {
     if (materialRef.current) materialRef.current.uniforms.uTime.value += delta
   })
 

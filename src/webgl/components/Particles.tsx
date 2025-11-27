@@ -2,64 +2,103 @@ import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 
+const vertexShader = `
+uniform float uTime;
+attribute float aSize;
+attribute vec3 aRandom;
+
+void main() {
+    vec3 pos = position;
+    
+    // --- GPU ANIMATION ---
+    float speed = aRandom.x * 0.5 + 0.2;
+    float flowLimit = 20.0;
+    
+    // 1. Linear Flow along Z
+    pos.z = mod(pos.z + uTime * speed + flowLimit, flowLimit * 2.0) - flowLimit;
+    
+    // 2. Turbulence
+    pos.y += sin(uTime * aRandom.y + pos.x) * 0.2;
+    pos.x += cos(uTime * 0.3 + pos.z) * 0.1;
+
+    vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+    gl_Position = projectionMatrix * mvPosition;
+    
+    gl_PointSize = aSize * (50.0 / -mvPosition.z);
+}
+`
+
+const fragmentShader = `
+void main() {
+    vec2 uv = gl_PointCoord - 0.5;
+    float r = length(uv) * 2.0;
+    if (r > 1.0) discard;
+    float alpha = 1.0 - r;
+    alpha = pow(alpha, 3.0);
+    gl_FragColor = vec4(0.8, 0.9, 0.9, alpha * 0.5);
+}
+`
+
 export default function Particles() {
-  const points = useRef<THREE.Points>(null)
+  const pointsRef = useRef<THREE.Points>(null)
+  const count = 3000
   
-  // Create 2000 particles filling the river volume
-  const particlesCount = 2000
-  const positions = useMemo(() => {
-    const arr = new Float32Array(particlesCount * 3)
-    for(let i = 0; i < particlesCount; i++) {
-      // Spread wide (x, z) and deep (y)
-      arr[i * 3 + 0] = (Math.random() - 0.5) * 30 
-      arr[i * 3 + 1] = (Math.random() - 0.5) * 10 - 2 // Center around -2 depth
-      arr[i * 3 + 2] = (Math.random() - 0.5) * 30
+  const { positions, randoms, sizes } = useMemo(() => {
+    const pos = new Float32Array(count * 3)
+    const rnd = new Float32Array(count * 3)
+    const sz = new Float32Array(count)
+    
+    for(let i = 0; i < count; i++) {
+        pos[i * 3 + 0] = (Math.random() - 0.5) * 40
+        pos[i * 3 + 1] = (Math.random() - 0.5) * 12 - 5
+        pos[i * 3 + 2] = (Math.random() - 0.5) * 40
+        
+        rnd[i * 3 + 0] = Math.random();
+        rnd[i * 3 + 1] = Math.random();
+        rnd[i * 3 + 2] = Math.random();
+        
+        sz[i] = Math.random() * 0.5 + 0.5;
     }
-    return arr
+    return { positions: pos, randoms: rnd, sizes: sz }
   }, [])
 
-  useFrame((state, delta) => {
-    if (!points.current) return
-    
-    // Simulate River Flow
-    const positions = points.current.geometry.attributes.position.array as Float32Array
-    
-    for(let i = 0; i < particlesCount; i++) {
-      const i3 = i * 3
-      
-      // Move Z backwards (river flow)
-      positions[i3 + 2] += delta * 0.5 
-      
-      // Reset if too far
-      if(positions[i3 + 2] > 15) {
-        positions[i3 + 2] = -15
-      }
-      
-      // Slight vertical noise (turbulence)
-      positions[i3 + 1] += Math.sin(state.clock.elapsedTime + positions[i3]) * 0.002
+  useFrame((state) => {
+    if (pointsRef.current) {
+        (pointsRef.current.material as THREE.ShaderMaterial).uniforms.uTime.value = state.clock.elapsedTime
     }
-    
-    points.current.geometry.attributes.position.needsUpdate = true
   })
 
   return (
-    <points ref={points}>
+    <points ref={pointsRef}>
       <bufferGeometry>
-        {/* FIXED: 'args' passes [array, itemSize] to the BufferAttribute constructor */}
+        {/* FIXED: Added 'args' which is required for the constructor */}
         <bufferAttribute 
-          attach="attributes-position" 
-          args={[positions, 3]}
-          count={particlesCount} 
-          array={positions} 
-          itemSize={3} 
+            attach="attributes-position" 
+            count={count} 
+            array={positions} 
+            itemSize={3} 
+            args={[positions, 3]} 
+        />
+        <bufferAttribute 
+            attach="attributes-aRandom" 
+            count={count} 
+            array={randoms} 
+            itemSize={3} 
+            args={[randoms, 3]} 
+        />
+        <bufferAttribute 
+            attach="attributes-aSize" 
+            count={count} 
+            array={sizes} 
+            itemSize={1} 
+            args={[sizes, 1]} 
         />
       </bufferGeometry>
-      <pointsMaterial 
-        size={0.03} 
-        color="#a5f2f3" // Light teal sediment
-        transparent 
-        opacity={0.4} 
-        sizeAttenuation 
+      <shaderMaterial
+        vertexShader={vertexShader}
+        fragmentShader={fragmentShader}
+        uniforms={{ uTime: { value: 0 } }}
+        transparent
         depthWrite={false}
         blending={THREE.AdditiveBlending}
       />

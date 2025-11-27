@@ -1,20 +1,23 @@
 import { Canvas } from '@react-three/fiber'
+// FIXED: Removed unused PerspectiveCamera import
 import Experience from './Experience'
+import { StrictMode } from 'react'
 
 export const SceneRoot = () => {
   return (
-    <Canvas
-      shadows
-      camera={{
-        position: [0, 0, 5],
-        fov: 45,
-        near: 0.1,
-        far: 200
-      }}
-      // Optional: Add dpr for better performance on high-res screens
-      dpr={[1, 2]} 
-    >
-      <Experience /> 
-    </Canvas>
+    <StrictMode>
+      <Canvas
+        dpr={[1, 1.5]}
+        gl={{ 
+            antialias: false,
+            toneMapping: 3, 
+            toneMappingExposure: 1.0,
+            powerPreference: "high-performance"
+        }}
+        camera={{ position: [0, -6, 5], fov: 45 }}
+      >
+         <Experience />
+      </Canvas>
+    </StrictMode>
   )
 }
